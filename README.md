@@ -3,4 +3,4 @@ Demo project for "Modelling of a Reinforcement Learning-based Multi-Robot Naviga
 
 ## 🎥 Demo Video
 
-[Click here to watch the demo](./sim_video/sim_final.mp4)
+[Click here to watch the demo](https://drive.google.com/file/d/1t6WHoGGrdnXT0gKtgFRtGzPcOEKZGOSs/view?usp=sharing)
