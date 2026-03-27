@@ -4,7 +4,6 @@ import numpy as np
 import pybullet as p
 import pybullet_data
 import time
-import torch
 from stable_baselines3 import PPO
 from stable_baselines3.common.monitor import Monitor
 
@@ -12,9 +11,7 @@ import os
 
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
-# ==============================
 # ENVIRONMENT
-# ==============================
 class MultiRobotEnv(gym.Env):
     def __init__(self, render=False):
         super(MultiRobotEnv, self).__init__()
@@ -48,9 +45,6 @@ class MultiRobotEnv(gym.Env):
         
         # Robots
         self.robot1 = p.loadURDF("r2d2.urdf", [-4, -4, 0.1])
-        # self.robot2 = p.loadURDF("r2d2.urdf", [2, 2, 0.1])
-
-        # p.changeDynamics(self.robot2, -1, mass=0)
 
         # Human (moving obstacle)
         self.human = p.loadURDF("sphere2.urdf", [1, 1, 0.5])
@@ -61,7 +55,7 @@ class MultiRobotEnv(gym.Env):
 
         visual_shape_id = p.createVisualShape(
             shapeType=p.GEOM_SPHERE,
-            radius=0.1,  # adjust size as needed
+            radius=0.1,
             rgbaColor=[1, 0, 0, 1] # Red color (R, G, B, Alpha)
         )
 
@@ -91,7 +85,8 @@ class MultiRobotEnv(gym.Env):
         p.stepSimulation()
 
         if self.render:
-            print(f"Dist Goal: {self._distance_to_goal():.2f}") #, Dist Human: {self._distance_to_human():.2f}")
+            print(f"Dist Goal: {self._distance_to_goal():.2f}")
+            # print(f"Dist Human: {self._distance_to_human():.2f}")
             robot_pose = p.getBasePositionAndOrientation(self.robot1)
             print(robot_pose[0])
 
@@ -101,10 +96,7 @@ class MultiRobotEnv(gym.Env):
 
         return obs, reward, done, False, {}
 
-    # ==============================
     # HELPERS
-    # ==============================
-
     def _get_obs(self):
         r_pos, _ = p.getBasePositionAndOrientation(self.robot1)
         h_pos, _ = p.getBasePositionAndOrientation(self.human)
@@ -120,7 +112,7 @@ class MultiRobotEnv(gym.Env):
             # dist_robot
         ], dtype=np.float32)
 
-    def _apply_action(self, robot, action):
+    def _apply_action_pos(self, robot, action):
         pos, orien = p.getBasePositionAndOrientation(robot)
         x, y = pos[0], pos[1]
 
@@ -194,12 +186,10 @@ class MultiRobotEnv(gym.Env):
             reward += 20
 
         # Collision penalty
-        if dist_human < 0.2: # or dist_robot < 0.2:
+        if dist_human < 0.2:
             reward -= 20
 
         # Too close to human
-        # if dist_human < 0.7:
-        #     reward -= 5
         reward -= 2 * (1 / (dist_human + 0.1))
 
         # Time penalty
@@ -218,11 +208,9 @@ class MultiRobotEnv(gym.Env):
 
 toBeTrained = True
 
-# ==============================
 # TRAINING
-# ==============================
 if toBeTrained:
-    env = Monitor(MultiRobotEnv(render=False))
+    env = Monitor(MultiRobotEnv(render=False), filename="monitor.csv")
     obs, _ = env.reset()
 
     model = PPO("MlpPolicy", env, verbose=1, tensorboard_log="./ppo_logs/")
@@ -232,10 +220,7 @@ if toBeTrained:
 
     p.disconnect()
 
-# ==============================
 # TESTING (VISUAL)
-# ==============================
-
 else:
     model = PPO.load("ppo_multi_robot")
 
@@ -243,13 +228,9 @@ else:
 test_env = MultiRobotEnv(render=True)
 obs, _ = test_env.reset()
 
-print("//////////////// Starting Sim /////////////////")
-
-# log_id = p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "/home/jay/Project_IISc_Intern/output.mp4")
+print("//////////////// Starting Sim ////////////////")
 
 time.sleep(10)
-
-# log_id = p.startStateLogging(p.STATE_LOGGING_VIDEO_MP4, "/home/jay/Project_IISc_Intern/output.mp4")
 
 for _ in range(5000):
     action, _ = model.predict(obs)
@@ -258,6 +239,4 @@ for _ in range(5000):
 
     if done:
         print("//////////////// Goal reached! ////////////////")
-        # p.stopStateLogging(log_id)
-        # p.disconnect()
         break
